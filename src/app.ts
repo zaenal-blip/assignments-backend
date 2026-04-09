@@ -63,7 +63,7 @@ export class App {
     };
 
     this.app.use(cors(corsOptions));
-    this.app.options("*", cors(corsOptions)); // Explicitly handle OPTIONS for all routes
+    this.app.options("(.*)", cors(corsOptions)); // Explicitly handle OPTIONS for all routes using Express 5 syntax
 
     this.app.use(express.json());
     this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
