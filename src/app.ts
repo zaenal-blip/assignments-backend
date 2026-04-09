@@ -48,7 +48,16 @@ export class App {
   }
 
   private configure = () => {
-    this.app.use(cors());
+    this.app.use(cors({
+      origin: [
+        "https://assignment-tps.tmmin.online",
+        "http://localhost:5173",
+        "http://localhost:3000"
+      ],
+      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      allowedHeaders: ["Content-Type", "Authorization"],
+      credentials: true
+    }));
     this.app.use(express.json());
     this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
   };
