@@ -1,9 +1,8 @@
 export interface CreateUserBody {
-  email: string;
   name: string;
+  noReg: string;
+  email: string;
+  noHp: string;
+  role: "MEMBER" | "LEADER" | "SPV" | "DPH";
   password: string;
-  avatar?: string;
-  role: "CUSTOMER" | "ORGANIZER";
-  referralCode?: string;
-  point?: number;
 }

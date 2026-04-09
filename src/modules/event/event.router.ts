@@ -11,22 +11,28 @@ export class EventRouter {
   }
 
   private initRoutes = () => {
-    // Public routes
-    this.router.get("/", this.eventController.getEvents);
-    this.router.get("/:id", this.eventController.getEventById);
+    // Basic routes for all users
+    this.router.get("/", authenticate, this.eventController.getEvents);
+    this.router.get("/:id", authenticate, this.eventController.getEventById);
 
-    // Protected routes (organizer only)
+    // Management routes (Leader, SPV, DPH only)
     this.router.post(
       "/",
       authenticate,
-      authorize("ORGANIZER"),
+      authorize("LEADER", "SPV", "DPH"),
       this.eventController.createEvent
     );
-    this.router.post(
-      "/:eventId/vouchers",
+    this.router.put(
+      "/:id",
       authenticate,
-      authorize("ORGANIZER"),
-      this.eventController.createVoucher
+      authorize("LEADER", "SPV", "DPH"),
+      this.eventController.updateEvent
+    );
+    this.router.delete(
+      "/:id",
+      authenticate,
+      authorize("LEADER", "SPV", "DPH"),
+      this.eventController.deleteEvent
     );
   };
 

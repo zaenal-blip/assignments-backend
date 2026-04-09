@@ -7,402 +7,172 @@ datasource db {
 }
 
 model User {
-  id           Int       @id @default(autoincrement())
-  name         String
-  email        String    @unique
-  password     String
-  avatar       String?
-  role         Role      @default(CUSTOMER)
-  referralCode String?
-  point        Int?      @default(0)
-  deletedAt    DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id        Int      @id @default(autoincrement())
+  noReg     String   @unique
+  name      String
+  email     String   @unique
+  noHp      String
+  role      Role     @default(MEMBER)
+  password  String
+  avatar    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  organizer        Organizer?
-  transactions     Transaction[]
-  reviews          Review[]
-  coupons          Coupon[]
-  points           Point[]
-  referredByUserId Int?
-  referredBy       User?      @relation("Referral", fields: [referredByUserId], references: [id])
-  referrals        User[]     @relation("Referral")
-  wishlists        Wishlist[]
-  notifications    Notification[]
-  waitlists        Waitlist[]
-  attendees        Attendee[]
+  events      Event[]    @relation("EventPIC")
+  projects    Project[]  @relation("ProjectPIC")
+  tasks       Task[]     @relation("TaskPIC")
+  regularJobs RegularJob[] @relation("RegularJobPIC")
+  notifications Notification[]
 
   @@map("users")
 }
 
-model Organizer {
-  id          Int      @id @default(autoincrement())
-  userId      Int      @unique
-  name        String
-  avatar      String?
-  bio         String?
-  rating      Float    @default(0)
-  totalEvents Int      @default(0)
-  totalReviews Int     @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  events   Event[]
-
-  @@map("organizers")
+enum Role {
+  MEMBER
+  LEADER
+  SPV
+  DPH
 }
 
 model Event {
-  id          Int      @id @default(autoincrement())
-  organizerId Int
-  venueId     Int?
-  categoryId  Int?
-  title       String
-  description String   @db.Text
-  image       String?
-  category    String
-  location    String
-  venue       String
-  startDate   DateTime
-  endDate     DateTime
-  status      EventStatus @default(DRAFT)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id        Int      @id @default(autoincrement())
+  name      String
+  picId     Int
+  pic       User     @relation("EventPIC", fields: [picId], references: [id])
+  progress  Float    @default(0)
+  startDate DateTime
+  endDate   DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  organizer    Organizer    @relation(fields: [organizerId], references: [id], onDelete: Cascade)
-  venueRel     Venue?       @relation(fields: [venueId], references: [id])
-  categoryRel  Category?    @relation(fields: [categoryId], references: [id])
-  images       EventImage[]
-  tags         EventTag[]
-  wishlists    Wishlist[]
-  waitlists    Waitlist[]
-  attendees    Attendee[]
-  ticketTypes  TicketType[]
-  vouchers     Voucher[]
-  transactions Transaction[]
-  reviews      Review[]
+  tasks Task[] @relation("EventTasks")
 
   @@map("events")
 }
 
-model TicketType {
-  id           Int    @id @default(autoincrement())
-  eventId      Int
-  name         String
-  description  String @db.Text
-  price        Int    @default(0)
-  totalSeat    Int
-  availableSeat Int
-  sold         Int    @default(0)
-
-  // Relations
-  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-  attendees    Attendee[]
-  waitlists    Waitlist[]
-
-  @@map("ticket_types")
-}
-
-model Voucher {
-  id            Int      @id @default(autoincrement())
-  eventId       Int
-  code          String
-  discountAmount Int
-  discountType  DiscountType
-  startDate     DateTime
-  endDate       DateTime
-  usageLimit    Int
-  usedCount     Int      @default(0)
-
-  // Relations
-  event        Event         @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  transactions Transaction[]
-
-  @@unique([eventId, code])
-  @@map("vouchers")
-}
-
-model Coupon {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  code          String   @unique
-  discountAmount Int
-  expiredAt     DateTime
-  isUsed        Boolean  @default(false)
-
-  // Relations
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  transactions  Transaction[]
-
-  @@map("coupons")
-}
-
-model Point {
-  id          Int      @id @default(autoincrement())
-  userId      Int
-  amount      Int
-  description String
-  expiredAt   DateTime?
-  type        PointType
-  createdAt   DateTime @default(now())
-
-  // Relations
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("points")
-}
-
-model Transaction {
-  id              Int      @id @default(autoincrement())
-  userId          Int
-  eventId         Int
-  ticketTypeId    Int
-  voucherId       Int?
-  couponId        Int?
-  ticketQty        Int
-  totalPrice      Int
-  pointsUsed      Int      @default(0)
-  finalPrice      Int
-  status          TransactionStatus @default(WAITING_PAYMENT)
-  paymentProof    String?
-  expiredAt       DateTime
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ticketType  TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-  voucher     Voucher?     @relation(fields: [voucherId], references: [id], onDelete: SetNull)
-  coupon      Coupon?      @relation(fields: [couponId], references: [id], onDelete: SetNull)
-  review      Review?
-  payment     Payment?
-  attendees   Attendee[]
-
-  @@map("transactions")
-}
-
-model Review {
-  id            Int      @id @default(autoincrement())
-  userId        Int
-  eventId       Int
-  transactionId Int      @unique
-  rating        Int      @db.SmallInt
-  comment       String   @db.Text
-  createdAt     DateTime @default(now())
-
-  // Relations
-  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event        @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  transaction Transaction  @relation(fields: [transactionId], references: [id], onDelete: Cascade)
-
-  @@map("reviews")
-}
-
-model Venue {
-  id          Int     @id @default(autoincrement())
-  name        String
-  address     String
-  city        String
-  state       String
-  country     String
-  capacity    Int?
-  description String?
-  latitude    Float?
-  longitude   Float?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  events      Event[]
-
-  @@map("venues")
-}
-
-model Category {
-  id          Int     @id @default(autoincrement())
-  name        String  @unique
-  description String?
-  createdAt   DateTime @default(now())
-
-  // Relations
-  events      Event[]
-
-  @@map("categories")
-}
-
-model Payment {
-  id              Int      @id @default(autoincrement())
-  transactionId   Int      @unique
-  amount          Int
-  paymentMethod   String   // 'credit_card', 'bank_transfer', 'ewallet'
-  paymentGateway  String?  // 'stripe', 'paypal', etc.
-  gatewayTxnId    String?  @unique
-  status          PaymentStatus @default(PENDING)
-  paidAt          DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  transaction     Transaction @relation(fields: [transactionId], references: [id])
-
-  @@map("payments")
-}
-
-model Attendee {
-  id            Int      @id @default(autoincrement())
-  transactionId Int
-  userId        Int
-  eventId       Int
-  ticketTypeId  Int
-  checkedIn     Boolean  @default(false)
-  checkedInAt   DateTime?
-  checkedOutAt  DateTime?
-  createdAt     DateTime @default(now())
-
-  // Relations
-  transaction   Transaction @relation(fields: [transactionId], references: [id])
-  user          User        @relation(fields: [userId], references: [id])
-  event         Event       @relation(fields: [eventId], references: [id])
-  ticketType    TicketType  @relation(fields: [ticketTypeId], references: [id])
-
-  @@unique([transactionId, userId])
-  @@map("attendees")
-}
-
-model EventImage {
-  id       Int     @id @default(autoincrement())
-  eventId  Int
-  url      String
-  altText  String?
-  isMain   Boolean @default(false)
-  order    Int     @default(0)
+model Project {
+  id        Int      @id @default(autoincrement())
+  name      String
+  picId     Int
+  pic       User     @relation("ProjectPIC", fields: [picId], references: [id])
+  progress  Float    @default(0)
   createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Relations
-  event    Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tasks Task[] @relation("ProjectTasks")
 
-  @@map("event_images")
+  @@map("projects")
 }
 
-model Tag {
-  id   Int    @id @default(autoincrement())
-  name String @unique
+model Task {
+  id         Int          @id @default(autoincrement())
+  name       String
+  picId      Int
+  pic        User         @relation("TaskPIC", fields: [picId], references: [id])
+  progress   Float        @default(0)
+  sourceType SourceType
+  status     TaskStatus   @default(TODO)
+  priority   TaskPriority @default(LOW)
+  
+  // Timing fields
+  date       String?      // Format: YYYY-MM-DD
+  startTime  String?      // Format: HH:mm
+  endTime    String?      // Format: HH:mm
+  dueDate    DateTime?
+
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+
+  // Source Relations (Optional)
+  eventId      Int?
+  event        Event?      @relation("EventTasks", fields: [eventId], references: [id], onDelete: Cascade)
+  projectId    Int?
+  project      Project?    @relation("ProjectTasks", fields: [projectId], references: [id], onDelete: Cascade)
+  regularJobId Int?
+  regularJob   RegularJob? @relation("RegularJobTasks", fields: [regularJobId], references: [id], onDelete: Cascade)
 
   // Relations
-  events EventTag[]
+  activities Activity[]
 
-  @@map("tags")
+  @@map("tasks")
 }
 
-model EventTag {
-  eventId Int
-  tagId   Int
-
-  // Relations
-  event   Event @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  tag     Tag   @relation(fields: [tagId], references: [id], onDelete: Cascade)
-
-  @@id([eventId, tagId])
-  @@map("event_tags")
+enum SourceType {
+  EVENT
+  PROJECT
+  PERSONAL
+  REGULAR
 }
 
-model Wishlist {
-  id      Int      @id @default(autoincrement())
-  userId  Int
-  eventId Int
-  addedAt DateTime @default(now())
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+}
+
+enum RegularCategory {
+  SAFETY
+  QUALITY
+  MAINTENANCE
+  FIVE_S
+  ENVIRONMENT
+}
+
+enum RegularFrequency {
+  DAILY
+  WEEKLY
+  MONTHLY
+}
+
+model Activity {
+  id        Int      @id @default(autoincrement())
+  taskId    Int
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  name      String
+  completed Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("activities")
+}
+
+model RegularJob {
+  id        Int              @id @default(autoincrement())
+  name      String
+  picId     Int
+  pic       User             @relation("RegularJobPIC", fields: [picId], references: [id])
+  category  RegularCategory  @default(SAFETY)
+  frequency RegularFrequency @default(DAILY)
+  progress  Float            @default(0)
+  startTime String?          // Format: HH:mm
+  endTime   String?          // Format: HH:mm
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
 
   // Relations
-  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tasks Task[] @relation("RegularJobTasks")
 
-  @@unique([userId, eventId])
-  @@map("wishlists")
+  @@map("regular_jobs")
 }
 
 model Notification {
   id        Int      @id @default(autoincrement())
   userId    Int
-  title     String
-  message   String
-  type      NotificationType
-  isRead    Boolean  @default(false)
-  readAt    DateTime?
-  createdAt DateTime @default(now())
-
-  // Relations
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  isRead    Boolean  @default(false)
+  type      String?
+  createdAt DateTime @default(now())
 
   @@map("notifications")
 }
 
-model Waitlist {
-  id         Int      @id @default(autoincrement())
-  userId     Int
-  eventId    Int
-  ticketTypeId Int?
-  position   Int
-  notified   Boolean  @default(false)
-  createdAt  DateTime @default(now())
-
-  // Relations
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ticketType TicketType? @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, eventId, ticketTypeId])
-  @@map("waitlists")
-}
-
-enum Role {
-  CUSTOMER
-  ORGANIZER
-}
-
-enum EventStatus {
-  DRAFT
-  PUBLISHED
-  CANCELLED
-  COMPLETED
-}
-
-enum DiscountType {
-  PERCENTAGE
-  FIXED
-}
-
-enum PointType {
-  EARNED
-  USED
-  EXPIRED
-}
-
-enum TransactionStatus {
-  WAITING_PAYMENT
-  WAITING_CONFIRMATION
-  DONE
-  REJECTED
-  EXPIRED
-  CANCELLED
-}
-
-enum PaymentStatus {
-  PENDING
-  COMPLETED
-  FAILED
-  REFUNDED
-}
-
-enum NotificationType {
-  EVENT_REMINDER
-  TICKET_CONFIRMATION
-  PAYMENT_SUCCESS
-  EVENT_UPDATE
-  PROMOTION
-}

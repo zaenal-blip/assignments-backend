@@ -1,122 +1,47 @@
 import { PrismaClient, Prisma } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
-import { CreateEventBody, GetEventsQuery, CreateVoucherBody } from "../../types/event.js";
+import { CreateEventBody, GetEventsQuery } from "../../types/event.js";
+import { sendEmailNotification } from "../../lib/mail.js";
 
 export class EventService {
   constructor(private prisma: PrismaClient) {}
 
   getEvents = async (query: GetEventsQuery) => {
-    const { page, take, sortBy, sortOrder, search, category, location, priceRange, startDate, endDate } = query;
+    const { page, take, search, startDate, endDate } = query;
 
-    const whereClause: Prisma.EventWhereInput = {
-      status: "PUBLISHED",
-    };
+    const where: Prisma.EventWhereInput = {};
 
-    // Search filter
     if (search) {
-      whereClause.OR = [
-        { title: { contains: search, mode: "insensitive" } },
-        { description: { contains: search, mode: "insensitive" } },
-        { location: { contains: search, mode: "insensitive" } },
-        { venue: { contains: search, mode: "insensitive" } },
-      ];
+      where.name = { contains: search, mode: "insensitive" };
     }
 
-    // Category filter
-    if (category) {
-      whereClause.category = category;
-    }
-
-    // Location filter
-    if (location) {
-      whereClause.location = location;
-    }
-
-    // Price range filter (free/paid)
-    if (priceRange === "free") {
-      whereClause.ticketTypes = {
-        some: {
-          price: 0,
-        },
+    if (startDate || endDate) {
+      where.startDate = {
+        gte: startDate ? new Date(startDate) : undefined,
+        lte: endDate ? new Date(endDate) : undefined,
       };
-    } else if (priceRange === "paid") {
-      whereClause.ticketTypes = {
-        some: {
-          price: { gt: 0 },
-        },
-      };
-    }
-
-    // Date filters
-    if (startDate) {
-      whereClause.startDate = { gte: new Date(startDate) };
-    }
-    if (endDate) {
-      whereClause.endDate = { lte: new Date(endDate) };
     }
 
     const events = await this.prisma.event.findMany({
-      where: whereClause,
+      where,
+      take,
+      skip: (page - 1) * take,
       include: {
-        organizer: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-        ticketTypes: true,
-        vouchers: {
-          where: {
-            startDate: { lte: new Date() },
-            endDate: { gte: new Date() },
-            usedCount: { lt: Prisma.sql`usage_limit` },
-          },
+        pic: {
+          select: { id: true, name: true }
         },
         _count: {
-          select: {
-            reviews: true,
-          },
-        },
+          select: { tasks: true }
+        }
       },
-      take: take,
-      skip: (page - 1) * take,
-      orderBy: { [sortBy]: sortOrder },
+      orderBy: { startDate: "asc" }
     });
 
-    // Calculate organizer rating from reviews
-    const eventsWithRating = await Promise.all(
-      events.map(async (event) => {
-        const reviews = await this.prisma.review.findMany({
-          where: { eventId: event.id },
-          select: { rating: true },
-        });
-
-        const avgRating =
-          reviews.length > 0
-            ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-            : 0;
-
-        return {
-          ...event,
-          organizer: {
-            ...event.organizer,
-            rating: avgRating,
-            totalReviews: reviews.length,
-          },
-        };
-      })
-    );
-
-    const total = await this.prisma.event.count({ where: whereClause });
+    const total = await this.prisma.event.count({ where });
 
     return {
-      data: eventsWithRating,
-      meta: { page, take, total },
+      data: events,
+      meta: { page, take, total }
     };
   };
 
@@ -124,174 +49,122 @@ export class EventService {
     const event = await this.prisma.event.findUnique({
       where: { id },
       include: {
-        organizer: {
+        pic: { select: { id: true, name: true } },
+        tasks: {
           include: {
-            user: {
-              select: {
-                id: true,
-                name: true,
-                avatar: true,
-              },
-            },
-          },
-        },
-        ticketTypes: true,
-        vouchers: {
-          where: {
-            startDate: { lte: new Date() },
-            endDate: { gte: new Date() },
-            usedCount: { lt: Prisma.sql`usage_limit` },
-          },
-        },
-      },
+            pic: { select: { id: true, name: true } },
+            activities: true,
+          }
+        }
+      }
     });
 
     if (!event) {
       throw new ApiError("Event not found", 404);
     }
 
-    // Calculate organizer rating
-    const reviews = await this.prisma.review.findMany({
-      where: { eventId: event.id },
-      select: { rating: true },
-    });
-
-    const avgRating =
-      reviews.length > 0
-        ? reviews.reduce((sum, r) => sum + r.rating, 0) / reviews.length
-        : 0;
-
+    // Process event details (tasks completed, remaining, issues, etc.)
+    const completedTasks = event.tasks.filter((t: any) => t.status === "DONE").length;
+    const remainingTasks = event.tasks.length - completedTasks;
+    
+    // In a real scenario, "issues" might be a separate field or derived from task notes. 
+    // For now, we'll return the summary as requested.
     return {
       ...event,
-      organizer: {
-        ...event.organizer,
-        rating: avgRating,
-        totalReviews: reviews.length,
-      },
+      summary: {
+        completedTasks,
+        remainingTasks,
+        issues: "None reported", // Placeholder as per design requirements
+      }
     };
   };
 
-  createEvent = async (organizerId: number, body: CreateEventBody) => {
-    // Validate dates
-    const startDate = new Date(body.startDate);
-    const endDate = new Date(body.endDate);
-
-    if (endDate < startDate) {
-      throw new ApiError("End date must be after start date", 400);
-    }
-
-    if (startDate < new Date()) {
-      throw new ApiError("Start date must be in the future", 400);
-    }
-
-    // Find organizer
-    const organizer = await this.prisma.organizer.findUnique({
-      where: { userId: organizerId },
-    });
-
-    if (!organizer) {
-      throw new ApiError("Organizer not found", 404);
-    }
-
-    // Create event with ticket types in transaction
-    const event = await this.prisma.$transaction(async (tx) => {
-      const newEvent = await tx.event.create({
+  createEvent = async (body: CreateEventBody) => {
+    return await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const event = await tx.event.create({
         data: {
-          organizerId: organizer.id,
-          title: body.title,
-          description: body.description,
-          image: body.image,
-          category: body.category,
-          location: body.location,
-          venue: body.venue,
-          startDate,
-          endDate,
-          status: "DRAFT",
-          ticketTypes: {
-            create: body.ticketTypes.map((tt) => ({
-              name: tt.name,
-              description: tt.description,
-              price: tt.price,
-              totalSeat: tt.totalSeat,
-              availableSeat: tt.totalSeat,
-            })),
-          },
-        },
-        include: {
-          ticketTypes: true,
-        },
+          name: body.name,
+          picId: body.picId,
+          startDate: new Date(body.startDate),
+          endDate: new Date(body.endDate),
+        }
       });
 
-      // Update organizer totalEvents
-      await tx.organizer.update({
-        where: { id: organizer.id },
-        data: {
-          totalEvents: { increment: 1 },
-        },
+      if (body.tasks && body.tasks.length > 0) {
+        for (const taskData of body.tasks) {
+          await tx.task.create({
+            data: {
+              name: taskData.name,
+              picId: taskData.picId,
+              sourceType: "EVENT",
+              eventId: event.id,
+              activities: {
+                create: taskData.activities.map((name) => ({ name }))
+              }
+            }
+          });
+        }
+      }
+
+      const picUser = await tx.user.findUnique({
+        where: { id: body.picId }
       });
 
-      return newEvent;
-    });
+      if (picUser?.email) {
+        const subject = `Assigned to Event: ${event.name}`;
+        const message = `You have been assigned as PIC for the event ${event.name}. Please check the system for details.`;
+        await sendEmailNotification(picUser.email, subject, message);
+        await tx.notification.create({
+          data: {
+            userId: picUser.id,
+            message: `You have been assigned to event ${event.name}.`,
+            type: "EVENT_ASSIGNMENT"
+          }
+        });
+      }
 
-    return event;
+      return event;
+    });
   };
 
-  createVoucher = async (eventId: number, organizerId: number, body: CreateVoucherBody) => {
-    // Verify event belongs to organizer
-    const organizer = await this.prisma.organizer.findUnique({
-      where: { userId: organizerId },
-    });
-
-    if (!organizer) {
-      throw new ApiError("Organizer not found", 404);
-    }
-
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
-    });
-
+  updateEvent = async (id: number, body: Partial<CreateEventBody>) => {
+    const event = await this.prisma.event.findUnique({ where: { id } });
     if (!event) {
       throw new ApiError("Event not found", 404);
     }
 
-    if (event.organizerId !== organizer.id) {
-      throw new ApiError("You don't have permission to create voucher for this event", 403);
-    }
-
-    // Validate dates
-    const startDate = new Date(body.startDate);
-    const endDate = new Date(body.endDate);
-
-    if (endDate < startDate) {
-      throw new ApiError("End date must be after start date", 400);
-    }
-
-    // Check if voucher code already exists for this event
-    const existingVoucher = await this.prisma.voucher.findUnique({
-      where: {
-        eventId_code: {
-          eventId,
-          code: body.code,
-        },
-      },
-    });
-
-    if (existingVoucher) {
-      throw new ApiError("Voucher code already exists for this event", 400);
-    }
-
-    const voucher = await this.prisma.voucher.create({
+    const updatedEvent = await this.prisma.event.update({
+      where: { id },
       data: {
-        eventId,
-        code: body.code,
-        discountAmount: body.discountAmount,
-        discountType: body.discountType,
-        startDate,
-        endDate,
-        usageLimit: body.usageLimit,
-      },
+        name: body.name,
+        picId: body.picId,
+        startDate: body.startDate ? new Date(body.startDate) : undefined,
+        endDate: body.endDate ? new Date(body.endDate) : undefined,
+      }
     });
 
-    return voucher;
+    if (body.picId && body.picId !== event.picId) {
+      const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
+      if (picUser?.email) {
+        const subject = `Assigned to Event: ${updatedEvent.name}`;
+        const message = `You have been assigned as PIC for the event ${updatedEvent.name}. Please check the system for details.`;
+        await sendEmailNotification(picUser.email, subject, message);
+        await this.prisma.notification.create({
+          data: {
+            userId: picUser.id,
+            message: `You have been assigned to event ${updatedEvent.name}.`,
+            type: "EVENT_ASSIGNMENT"
+          }
+        });
+      }
+    }
+
+    return updatedEvent;
+  };
+
+  deleteEvent = async (id: number) => {
+    return await this.prisma.event.delete({
+      where: { id }
+    });
   };
 }
