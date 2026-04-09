@@ -5,12 +5,14 @@ import { ApiError } from "../utils/api-error.js";
 interface JwtPayload {
   id: number;
   role: string;
+  name: string;
 }
 
 export interface AuthRequest extends Request {
   user?: {
     id: number;
     role: string;
+    name: string;
   };
 }
 
@@ -31,25 +33,26 @@ export const authenticate = (
     req.user = {
       id: decoded.id,
       role: decoded.role,
+      name: decoded.name,
     };
 
     next();
   } catch (error) {
     if (error instanceof ApiError) {
-      throw error;
+      return next(error);
     }
-    throw new ApiError("Invalid token", 401);
+    next(new ApiError("Invalid token", 401));
   }
 };
 
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      throw new ApiError("Unauthorized", 401);
+      return next(new ApiError("Unauthorized", 401));
     }
 
     if (!roles.includes(req.user.role)) {
-      throw new ApiError("Forbidden", 403);
+      return next(new ApiError(`Forbidden: Your token role is '${req.user.role}', but this action requires '${roles.join(",")}'`, 403));
     }
 
     next();

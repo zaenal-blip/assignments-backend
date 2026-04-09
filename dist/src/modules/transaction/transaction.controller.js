@@ -1,0 +1,53 @@
+export class TransactionController {
+    transactionService;
+    constructor(transactionService) {
+        this.transactionService = transactionService;
+    }
+    createTransaction = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const eventId = Number(req.params.eventId);
+        const result = await this.transactionService.createTransaction(req.user.id, eventId, req.body);
+        res.status(201).send(result);
+    };
+    uploadPaymentProof = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const transactionId = Number(req.params.id);
+        const result = await this.transactionService.uploadPaymentProof(transactionId, req.user.id, req.body);
+        res.status(200).send(result);
+    };
+    confirmTransaction = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const transactionId = Number(req.params.id);
+        const result = await this.transactionService.confirmTransaction(transactionId, req.user.id);
+        res.status(200).send(result);
+    };
+    rejectTransaction = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const transactionId = Number(req.params.id);
+        const result = await this.transactionService.rejectTransaction(transactionId, req.user.id);
+        res.status(200).send(result);
+    };
+    getMyTransactions = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const result = await this.transactionService.getMyTransactions(req.user.id);
+        res.status(200).send(result);
+    };
+    getTransactionById = async (req, res) => {
+        if (!req.user) {
+            return res.status(401).send({ message: "Unauthorized" });
+        }
+        const transactionId = Number(req.params.id);
+        const result = await this.transactionService.getTransactionById(transactionId, req.user.id);
+        res.status(200).send(result);
+    };
+}

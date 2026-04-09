@@ -1,0 +1,35 @@
+﻿node.exe : Environment 
+variables loaded from 
+.env
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo       
+       : NotSpecified:   
+  (Environment variabl   
+ es loaded from .env:    
+String) [], RemoteEx    
+ception
+    + FullyQualifiedErro 
+   rId : NativeCommandE  
+  rror
+ 
+Prisma schema loaded from prisma\schema.prisma
+Error: 
+Cannot find module 'C:\ep
+kd\ass-board-tps\backend\
+node_modules\@prisma\clie
+nt\runtime\query_engine_b
+g.postgresql.wasm-base64.
+js'
+Require stack:
+- C:\epkd\ass-board-tps\b
+ackend\node_modules\prism
+a\build\index.js
+
+

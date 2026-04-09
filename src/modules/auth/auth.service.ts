@@ -5,61 +5,81 @@ import jwt from "jsonwebtoken";
 import { CreateUserBody } from "../../types/user.js";
 
 export class AuthService {
-  //   prisma: PrismaClient;
-  constructor(private prisma: PrismaClient) {
-    // this.prisma = prisma;
-  }
+  constructor(private prisma: PrismaClient) {}
 
   register = async (body: CreateUserBody) => {
-    //1. Cek avaibilitas email
-    const user = await this.prisma.user.findUnique({
-      where: { email: body.email },
-    });
-    //2. Kalau sudah dipakai throw error
-    if (user) {
-      throw new ApiError("Email Already Exist", 400);
-    }
-    //3. Kalo belum, Hash Password dari body.password
-    const hashedPassword = await hashPassword(body.password);
+    // Sanitize and normalize inputs
+    const email = body.email.trim().toLowerCase();
+    const noReg = body.noReg.trim();
+    const name = body.name.trim();
+    const noHp = body.noHp.trim();
 
-    //4. Create user baru berdasarkan body dan hashed password
-    await this.prisma.user.create({
-      data: {
-        name: body.name,
-        email: body.email,
-        password: hashedPassword,
-        role: body.role,
-        referralCode: body.referralCode,
-        point: body.point,
-        avatar: body.avatar,
+    // 1. Check uniqueness of email and noReg
+    const existingUser = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: email },
+          { noReg: noReg },
+        ],
       },
     });
 
-    //5. Returm Message Register Success
-    return { message: "Register Success" };
+    if (existingUser) {
+      if (existingUser.email === email) {
+        throw new ApiError("Email already exists", 400);
+      }
+      throw new ApiError("NoReg already exists", 400);
+    }
+
+    // 2. Format name to Uppercase
+    const nameUppercase = name.toUpperCase();
+
+    // 3. Hash Password
+    const hashedPassword = await hashPassword(body.password);
+
+    // 4. Create user
+    const newUser = await this.prisma.user.create({
+      data: {
+        name: nameUppercase,
+        noReg: noReg,
+        email: email,
+        noHp: noHp,
+        role: body.role,
+        password: hashedPassword,
+      },
+    });
+
+    return { message: "Register success", userId: newUser.id };
   };
 
-  login = async (body: Pick<User, "email" | "password">) => {
-    //1. Cek Emailnya ada ga
-    const user = await this.prisma.user.findUnique({
-      where: { email: body.email },
+  login = async (body: { identifier: string; password: string }) => {
+    // 1. Find user by Name (uppercase) or NoReg
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { name: body.identifier.toUpperCase() },
+          { noReg: body.identifier },
+          { email: body.identifier.toLowerCase() },
+        ],
+      },
     });
-    //2. Kalo ga ada, throw error
+
     if (!user) {
-      throw new ApiError("Invalid Credential", 400);
+      throw new ApiError("Invalid credentials", 400);
     }
-    //3. Cek Passwordnya ada ga
+
+    // 2. Compare Password
     const isPassMatch = await comparePassword(body.password, user.password);
-    //4. Kalo ga ada, throw error
     if (!isPassMatch) {
-      throw new ApiError("Invalid Credential", 400);
+      throw new ApiError("Invalid credentials", 400);
     }
-    //5. Generate Token dengan jwt->jsonwebtoken
-    const payload = { id: user.id, role: user.role };
+
+    // 3. Generate Token
+    const payload = { id: user.id, role: user.role, name: user.name };
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
-      expiresIn: "2h",
+      expiresIn: "1d",
     });
-    //6. Return data usernya
+
     const { password, ...userWithoutPassword } = user;
     return { ...userWithoutPassword, accessToken };
   };

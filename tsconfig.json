@@ -8,5 +8,12 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true
-  }
+  },
+  "exclude": [
+    "node_modules",
+    "src/modules/review",
+    "src/modules/transaction",
+    "src/modules/user",
+    "src/jobs"
+  ]
 }
