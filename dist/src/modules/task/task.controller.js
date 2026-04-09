@@ -6,11 +6,18 @@ export class TaskController {
     }
     getTasks = async (req, res) => {
         try {
+            const user = req.user;
+            const sourceType = req.query.sourceType;
+            let picId = req.query.picId ? Number(req.query.picId) : undefined;
+            // Force filter for members on certain source types
+            if (user.role === "MEMBER" && (sourceType === "REGULAR" || sourceType === "PERSONAL")) {
+                picId = user.id;
+            }
             const query = {
                 page: Number(req.query.page) || 1,
                 take: Number(req.query.take) || 10,
-                sourceType: req.query.sourceType,
-                picId: req.query.picId ? Number(req.query.picId) : undefined,
+                sourceType,
+                picId,
                 sortBy: req.query.sortBy || "createdAt",
                 sortOrder: req.query.sortOrder || "desc",
             };
@@ -51,6 +58,16 @@ export class TaskController {
             const id = Number(req.params.id);
             const result = await this.taskService.assignTask(id, req.body);
             res.status(200).json(result);
+        }
+        catch (error) {
+            const status = error instanceof ApiError ? error.status : 500;
+            res.status(status).json({ message: error.message });
+        }
+    };
+    createTask = async (req, res) => {
+        try {
+            const result = await this.taskService.createTask(req.body);
+            res.status(201).json(result);
         }
         catch (error) {
             const status = error instanceof ApiError ? error.status : 500;

@@ -66,7 +66,7 @@ export class TaskService {
     updateActivityStatus = async (taskId, picId, userRole, body) => {
         const task = await this.prisma.task.findUnique({
             where: { id: taskId },
-            include: { activities: true }
+            include: { activities: true, pic: true }
         });
         if (!task) {
             throw new ApiError("Task not found", 404);
@@ -92,6 +92,7 @@ export class TaskService {
         const progress = totalActivities > 0 ? (completedActivities / totalActivities) * 100 : 0;
         const allCompleted = updatedTask?.activities.every((a) => a.completed);
         const nextStatus = allCompleted ? "DONE" : "IN_PROGRESS";
+        const previousStatus = task.status;
         await this.prisma.task.update({
             where: { id: taskId },
             data: {
@@ -99,6 +100,20 @@ export class TaskService {
                 progress: Math.round(progress)
             }
         });
+        if (nextStatus === "DONE" && previousStatus !== "DONE") {
+            const superiors = await this.prisma.user.findMany({
+                where: { role: { in: ["LEADER", "SPV", "DPH"] } }
+            });
+            if (superiors.length > 0) {
+                await this.prisma.notification.createMany({
+                    data: superiors.map(sup => ({
+                        userId: sup.id,
+                        message: `Task "${task.name}" has been fully completed by ${task.pic?.name || "Member"}.`,
+                        type: "TASK_COMPLETION"
+                    }))
+                });
+            }
+        }
         return { message: "Task progress updated successfully", progress: Math.round(progress) };
     };
     assignTask = async (taskId, body) => {
@@ -125,5 +140,39 @@ export class TaskService {
             }
         });
         return { message: "Task assigned successfully", task };
+    };
+    createTask = async (body) => {
+        const task = await this.prisma.task.create({
+            data: {
+                name: body.name,
+                picId: body.picId,
+                sourceType: body.sourceType, // EVENT | PROJECT
+                dueDate: body.dueDate ? new Date(body.dueDate) : undefined,
+                eventId: body.eventId ? Number(body.eventId) : undefined,
+                projectId: body.projectId ? Number(body.projectId) : undefined,
+                activities: {
+                    create: body.activities ? body.activities.map((name) => ({ name })) : []
+                }
+            },
+            include: {
+                pic: { select: { id: true, name: true, email: true } },
+                project: { select: { id: true, name: true } },
+                event: { select: { id: true, name: true } }
+            }
+        });
+        const subject = `New Task Assignment: ${task.name}`;
+        const sourceName = task.project?.name ?? task.event?.name ?? "General Task";
+        const bodyMessage = `You have been assigned to task ${task.name} from ${sourceName}. Please check the system for details.`;
+        if (task.pic.email) {
+            await sendEmailNotification(task.pic.email, subject, bodyMessage);
+        }
+        await this.prisma.notification.create({
+            data: {
+                userId: task.picId,
+                message: `You have been assigned to task ${task.name} (${sourceName}).`,
+                type: "TASK_ASSIGNMENT"
+            }
+        });
+        return task;
     };
 }

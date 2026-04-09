@@ -1,5 +1,6 @@
 import express from "express";
 import cors from "cors";
+import path from "path";
 import { prisma } from "./lib/prisma.js";
 import { authenticate } from "./middleware/auth.middleware.js";
 // Import New Modules
@@ -12,6 +13,9 @@ import { EventRouter } from "./modules/event/event.router.js";
 import { ProjectService } from "./modules/project/project.service.js";
 import { ProjectController } from "./modules/project/project.controller.js";
 import { ProjectRouter } from "./modules/project/project.router.js";
+import { UserService } from "./modules/user/user.service.js";
+import { UserController } from "./modules/user/user.controller.js";
+import { UserRouter } from "./modules/user/user.router.js";
 import { TaskService } from "./modules/task/task.service.js";
 import { TaskController } from "./modules/task/task.controller.js";
 import { TaskRouter } from "./modules/task/task.router.js";
@@ -34,6 +38,7 @@ export class App {
     configure = () => {
         this.app.use(cors());
         this.app.use(express.json());
+        this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
     };
     registerModules = () => {
         const prismaClient = prisma;
@@ -52,6 +57,9 @@ export class App {
         const regularJobController = new RegularJobController(regularJobService);
         const notificationController = new NotificationController(notificationService);
         const personalJobController = new PersonalJobController(taskService);
+        const userService = new UserService(prismaClient);
+        const userController = new UserController(userService);
+        const userRouter = new UserRouter(userController);
         // Routers
         const authRouter = new AuthRouter(authController);
         const eventRouter = new EventRouter(eventController);
@@ -73,10 +81,12 @@ export class App {
         this.app.use("/tasks", taskRouter.getRouter());
         this.app.use("/regular-jobs", regularJobRouter.getRouter());
         this.app.use("/notifications", notificationRouter.getRouter());
+        this.app.use("/users", userRouter.getRouter());
         this.app.use("/personal-jobs", personalJobRouter);
     };
     handleError = () => {
         this.app.use((err, req, res, next) => {
+            console.error("[Global Error Handler]", err);
             const message = err.message || "Something went wrong!";
             const status = err.status || 500;
             res.status(status).send({ message });

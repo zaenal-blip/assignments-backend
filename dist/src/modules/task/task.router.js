@@ -15,6 +15,8 @@ export class TaskRouter {
         this.router.patch("/:id/activities", authenticate, this.taskController.updateActivityStatus);
         // Assign task (Leader, SPV, DPH only)
         this.router.patch("/:id/assign", authenticate, authorize("LEADER", "SPV", "DPH"), this.taskController.assignTask);
+        // Create a new general task (Leader, SPV, DPH only)
+        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH"), this.taskController.createTask);
     };
     getRouter = () => {
         return this.router;

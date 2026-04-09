@@ -1,7 +1,7 @@
 import { z } from "zod";
 export const registerSchema = z.object({
     name: z.string().min(3),
-    noReg: z.string().min(3),
+    noReg: z.string().regex(/^[0-9]{7}$/, { message: "No Reg harus 7 angka" }),
     email: z.string().email(),
     noHp: z.string().regex(/^[0-9]+$/, { message: "No HP must contain only numbers" }).min(10),
     role: z.enum(["MEMBER", "LEADER", "SPV", "DPH"]),

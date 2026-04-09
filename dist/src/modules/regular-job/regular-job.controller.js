@@ -6,7 +6,7 @@ export class RegularJobController {
     }
     getRegularJobs = async (req, res) => {
         try {
-            const result = await this.regularJobService.getRegularJobs();
+            const result = await this.regularJobService.getRegularJobs(req.user.id);
             res.status(200).json(result);
         }
         catch (error) {
@@ -16,8 +16,16 @@ export class RegularJobController {
     };
     createRegularJob = async (req, res) => {
         try {
-            const { name, picId } = req.body;
-            const result = await this.regularJobService.createRegularJob(name, picId);
+            const { name, category, frequency, date, startTime, endTime } = req.body;
+            let { picId } = req.body;
+            // Ensure members can only create for themselves
+            if (req.user.role === "MEMBER") {
+                picId = req.user.id;
+            }
+            else if (!picId) {
+                picId = req.user.id;
+            }
+            const result = await this.regularJobService.createRegularJob(name, picId, category, frequency, date, startTime, endTime);
             res.status(201).json(result);
         }
         catch (error) {
@@ -28,8 +36,18 @@ export class RegularJobController {
     updateRegularJob = async (req, res) => {
         try {
             const id = Number(req.params.id);
-            const { name } = req.body;
-            const result = await this.regularJobService.updateRegularJob(id, name);
+            const { name, progress } = req.body;
+            // Ownership check for security
+            const existing = await this.regularJobService.getRegularJobById(id);
+            if (req.user.role === "MEMBER" && existing.picId !== req.user.id) {
+                throw new ApiError("Forbidden: You can only update your own activities", 403);
+            }
+            const dataToUpdate = {};
+            if (name !== undefined)
+                dataToUpdate.name = name;
+            if (progress !== undefined)
+                dataToUpdate.progress = progress;
+            const result = await this.regularJobService.updateRegularJob(id, dataToUpdate);
             res.status(200).json(result);
         }
         catch (error) {
@@ -51,6 +69,11 @@ export class RegularJobController {
     deleteRegularJob = async (req, res) => {
         try {
             const id = Number(req.params.id);
+            // Ownership check for security
+            const existing = await this.regularJobService.getRegularJobById(id);
+            if (req.user.role === "MEMBER" && existing.picId !== req.user.id) {
+                throw new ApiError("Forbidden: You can only delete your own activities", 403);
+            }
             await this.regularJobService.deleteRegularJob(id);
             res.status(200).json({ message: "Regular Job deleted" });
         }

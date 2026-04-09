@@ -7,32 +7,37 @@ export class AuthService {
         this.prisma = prisma;
     }
     register = async (body) => {
+        // Sanitize and normalize inputs
+        const email = body.email.trim().toLowerCase();
+        const noReg = body.noReg.trim();
+        const name = body.name.trim();
+        const noHp = body.noHp.trim();
         // 1. Check uniqueness of email and noReg
         const existingUser = await this.prisma.user.findFirst({
             where: {
                 OR: [
-                    { email: body.email },
-                    { noReg: body.noReg },
+                    { email: email },
+                    { noReg: noReg },
                 ],
             },
         });
         if (existingUser) {
-            if (existingUser.email === body.email) {
+            if (existingUser.email === email) {
                 throw new ApiError("Email already exists", 400);
             }
             throw new ApiError("NoReg already exists", 400);
         }
         // 2. Format name to Uppercase
-        const nameUppercase = body.name.toUpperCase();
+        const nameUppercase = name.toUpperCase();
         // 3. Hash Password
         const hashedPassword = await hashPassword(body.password);
         // 4. Create user
         const newUser = await this.prisma.user.create({
             data: {
                 name: nameUppercase,
-                noReg: body.noReg,
-                email: body.email,
-                noHp: body.noHp,
+                noReg: noReg,
+                email: email,
+                noHp: noHp,
                 role: body.role,
                 password: hashedPassword,
             },
@@ -46,6 +51,7 @@ export class AuthService {
                 OR: [
                     { name: body.identifier.toUpperCase() },
                     { noReg: body.identifier },
+                    { email: body.identifier.toLowerCase() },
                 ],
             },
         });

@@ -11,7 +11,8 @@ export class AuthController {
         }
         catch (error) {
             const status = error instanceof ApiError ? error.status : 500;
-            res.status(status).json({ message: error.message });
+            console.error("[Register Error]", error);
+            res.status(status).json({ message: error.message || "Registration failed" });
         }
     };
     login = async (req, res) => {

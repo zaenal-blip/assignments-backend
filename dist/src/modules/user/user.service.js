@@ -1,4 +1,5 @@
 import { ApiError } from "../../utils/api-error.js";
+import { hashPassword } from "../../lib/argon.js";
 export class UserService {
     prisma;
     constructor(prisma) {
@@ -6,9 +7,7 @@ export class UserService {
     }
     getUsers = async (query) => {
         const { page, sortBy, sortOrder, take, search } = query;
-        const whereClause = {
-            deletedAt: null,
-        };
+        const whereClause = {};
         if (search) {
             whereClause.name = { contains: search, mode: "insensitive" };
         }
@@ -27,7 +26,7 @@ export class UserService {
     };
     getUser = async (id) => {
         const user = await this.prisma.user.findUnique({
-            where: { id, deletedAt: null },
+            where: { id },
             omit: { password: true },
         });
         if (!user)
@@ -35,15 +34,15 @@ export class UserService {
         return user;
     };
     createUser = async (body) => {
+        const hashedPassword = await hashPassword(body.password);
         await this.prisma.user.create({
             data: {
-                name: body.name,
+                name: body.name.toUpperCase(),
+                noReg: body.noReg,
                 email: body.email,
-                password: body.password,
+                noHp: body.noHp,
+                password: hashedPassword,
                 role: body.role,
-                referralCode: body.referralCode,
-                point: body.point,
-                avatar: body.avatar,
             },
         });
         return { message: "create user success" };
@@ -57,17 +56,41 @@ export class UserService {
             if (userEmail)
                 throw new ApiError("email already exist", 400);
         }
+        if (body.name) {
+            body.name = body.name.toUpperCase();
+        }
         await this.prisma.user.update({
             where: { id },
             data: body,
         });
         return { message: "update user success" };
     };
-    deleteUser = async (id) => {
+    updateProfile = async (id, body) => {
         await this.getUser(id);
+        const updateData = { ...body };
+        if (body.email) {
+            const existingUser = await this.prisma.user.findFirst({
+                where: { email: body.email, NOT: { id } },
+            });
+            if (existingUser)
+                throw new ApiError("Email already in use", 400);
+        }
+        if (body.password) {
+            updateData.password = await hashPassword(body.password);
+        }
+        if (body.name) {
+            updateData.name = body.name.toUpperCase();
+        }
         await this.prisma.user.update({
             where: { id },
-            data: { deletedAt: new Date() },
+            data: updateData,
+        });
+        return { message: "Profile updated successfully" };
+    };
+    deleteUser = async (id) => {
+        await this.getUser(id);
+        await this.prisma.user.delete({
+            where: { id },
         });
         return { message: "delete user success" };
     };

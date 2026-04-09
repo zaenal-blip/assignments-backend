@@ -28,7 +28,7 @@ export const authorize = (...roles) => {
             return next(new ApiError("Unauthorized", 401));
         }
         if (!roles.includes(req.user.role)) {
-            return next(new ApiError("Forbidden", 403));
+            return next(new ApiError(`Forbidden: Your token role is '${req.user.role}', but this action requires '${roles.join(",")}'`, 403));
         }
         next();
     };

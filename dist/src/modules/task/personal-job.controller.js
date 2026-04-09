@@ -30,18 +30,35 @@ export class PersonalJobController {
     createPersonalJob = async (req, res) => {
         try {
             const user = req.user;
-            const { name, activities } = req.body;
+            const { name, activities, dueDate, priority } = req.body;
             const result = await prisma.task.create({
                 data: {
                     name,
                     picId: user.id,
                     sourceType: "PERSONAL",
+                    dueDate: dueDate ? new Date(dueDate) : undefined,
+                    priority: priority || "LOW",
                     activities: {
                         create: activities.map((name) => ({ name }))
                     }
                 },
-                include: { activities: true }
+                include: { activities: true, pic: { select: { id: true, name: true } } }
             });
+            if (user.role === "MEMBER") {
+                const superiors = await prisma.user.findMany({
+                    where: { role: { in: ["LEADER", "SPV", "DPH"] } },
+                    select: { id: true }
+                });
+                if (superiors.length > 0) {
+                    await prisma.notification.createMany({
+                        data: superiors.map(superior => ({
+                            userId: superior.id,
+                            message: `Member ${user.name} submitted a new personal job: ${name}`,
+                            type: "PERSONAL_JOB_SUBMISSION"
+                        }))
+                    });
+                }
+            }
             res.status(201).json(result);
         }
         catch (error) {
@@ -52,7 +69,7 @@ export class PersonalJobController {
         try {
             const user = req.user;
             const id = Number(req.params.id);
-            const { name, activities } = req.body;
+            const { name, activities, dueDate, priority } = req.body;
             const existingTask = await prisma.task.findUnique({
                 where: { id },
                 include: { activities: true }
@@ -67,9 +84,12 @@ export class PersonalJobController {
                 throw new ApiError("Unauthorized to update this personal job", 403);
             }
             const updateData = {};
-            if (name !== undefined) {
+            if (name !== undefined)
                 updateData.name = name;
-            }
+            if (dueDate !== undefined)
+                updateData.dueDate = dueDate ? new Date(dueDate) : null;
+            if (priority !== undefined)
+                updateData.priority = priority;
             if (activities) {
                 updateData.activities = {
                     deleteMany: {},
@@ -79,7 +99,7 @@ export class PersonalJobController {
             const result = await prisma.task.update({
                 where: { id },
                 data: updateData,
-                include: { activities: true }
+                include: { activities: true, pic: { select: { id: true, name: true } } }
             });
             res.status(200).json(result);
         }
