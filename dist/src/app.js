@@ -36,7 +36,21 @@ export class App {
         this.handleError();
     }
     configure = () => {
-        this.app.use(cors());
+        // 1. CORS MUST BE FIRST
+        const corsOptions = {
+            origin: [
+                "https://assignment-tps.tmmin.online",
+                "http://localhost:5173",
+                "http://localhost:3000"
+            ],
+            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+            allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+            credentials: true,
+            preflightContinue: false,
+            optionsSuccessStatus: 204
+        };
+        this.app.use(cors(corsOptions));
+        this.app.options("*", cors(corsOptions)); // Explicitly handle OPTIONS for all routes
         this.app.use(express.json());
         this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
     };
