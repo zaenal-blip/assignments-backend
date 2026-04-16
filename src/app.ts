@@ -49,21 +49,31 @@ export class App {
   }
 
   private configure = () => {
-    const allowedOrigins = [
-      "https://assignment-tps.tmmin.online",
-      "http://localhost:5173",
-      process.env.FRONTEND_URL,
-      process.env.BASE_URL_FE
-    ].filter(Boolean) as string[];
+    // 1. Manual CORS Handling (More robust for Vercel/Serverless)
+    this.app.use((req, res, next) => {
+      const origin = req.headers.origin;
+      const allowedOrigins = [
+        "https://assignment-tps.tmmin.online",
+        "http://localhost:5173",
+        process.env.FRONTEND_URL,
+        process.env.BASE_URL_FE
+      ].filter(Boolean).map(o => o?.replace(/\/$/, ""));
 
-    const corsOptions = {
-      origin: allowedOrigins,
-      credentials: true,
-      optionsSuccessStatus: 200
-    };
+      if (origin && allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+        res.setHeader("Access-Control-Allow-Origin", origin);
+        res.setHeader("Access-Control-Allow-Credentials", "true");
+      }
+      
+      res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+      res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization");
 
-    this.app.use(cors(corsOptions));
-    this.app.options("*", cors(corsOptions)); // Handle preflight for all endpoints
+      // Handle Preflight
+      if (req.method === "OPTIONS") {
+        res.status(200).end();
+        return;
+      }
+      next();
+    });
     
     this.app.use(express.json({ limit: "50mb" }));
     this.app.use(express.urlencoded({ extended: true, limit: "50mb" }));
