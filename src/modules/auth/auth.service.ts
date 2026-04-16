@@ -3,6 +3,7 @@ import { comparePassword, hashPassword } from "../../lib/argon.js";
 import { ApiError } from "../../utils/api-error.js";
 import jwt from "jsonwebtoken";
 import { CreateUserBody } from "../../types/user.js";
+import { normalizePhone } from "../../utils/phone-formatter.js";
 
 export class AuthService {
   constructor(private prisma: PrismaClient) {}
@@ -12,7 +13,7 @@ export class AuthService {
     const email = body.email.trim().toLowerCase();
     const noReg = body.noReg.trim();
     const name = body.name.trim();
-    const noHp = body.noHp.trim();
+    const noHp = normalizePhone(body.noHp.trim());
 
     // 1. Check uniqueness of email and noReg
     const existingUser = await this.prisma.user.findFirst({

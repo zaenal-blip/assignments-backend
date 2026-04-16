@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { UpdateTaskProgressBody, AssignTaskBody, GetTasksQuery } from "../../types/task.js";
 import { sendEmailNotification } from "../../lib/mail.js";
+import { NotificationService } from "../notification/email-notification.service.js";
 
 export class TaskService {
   constructor(private prisma: PrismaClient) {}
@@ -148,19 +149,23 @@ export class TaskService {
       where: { id: taskId },
       data: { picId: body.picId },
       include: {
-        pic: { select: { id: true, name: true, email: true } },
+        pic: { select: { id: true, name: true, email: true, noHp: true } },
         project: { select: { id: true, name: true } },
         event: { select: { id: true, name: true } }
       }
     });
 
-    const subject = `Task Assignment: ${task.name}`;
-    const sourceName = task.project?.name ?? task.event?.name ?? "Personal/Regular Task";
-    const bodyMessage = `You have been assigned to task ${task.name} from ${sourceName}. Please check the system for details.`;
-
-    if (task.pic.email) {
-      await sendEmailNotification(task.pic.email, subject, bodyMessage);
+    // Decentralized Notification Trigger (Email active)
+    if (task.pic) {
+      await NotificationService.sendTaskAssignmentNotification(
+        task.pic as any,
+        task,
+        task.project || task.event || null,
+        "Supervisor"
+      );
     }
+
+    const sourceName = task.project?.name ?? task.event?.name ?? "Personal/Regular Task";
 
     await this.prisma.notification.create({
       data: {
@@ -187,18 +192,22 @@ export class TaskService {
         }
       },
       include: {
-        pic: { select: { id: true, name: true, email: true } },
+        pic: { select: { id: true, name: true, email: true, noHp: true } },
         project: { select: { id: true, name: true } },
         event: { select: { id: true, name: true } }
       }
     });
 
-    const subject = `New Task Assignment: ${task.name}`;
     const sourceName = task.project?.name ?? task.event?.name ?? "General Task";
-    const bodyMessage = `You have been assigned to task ${task.name} from ${sourceName}. Please check the system for details.`;
 
-    if (task.pic.email) {
-      await sendEmailNotification(task.pic.email, subject, bodyMessage);
+    // Decentralized Notification Trigger (Email active)
+    if (task.pic) {
+      await NotificationService.sendTaskAssignmentNotification(
+        task.pic as any,
+        task,
+        task.project || task.event || null,
+        "Supervisor"
+      );
     }
 
     await this.prisma.notification.create({

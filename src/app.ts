@@ -35,6 +35,7 @@ import { NotificationRouter } from "./modules/notification/notification.router.j
 
 import { PersonalJobController } from "./modules/task/personal-job.controller.js";
 
+
 const PORT = 8000;
 
 export class App {
@@ -53,10 +54,11 @@ export class App {
       origin: [
         "https://assignment-tps.tmmin.online",
         "http://localhost:5173",
+        "http://localhost:5174",
         "http://localhost:3000",
         process.env.BASE_URL_FE!,
       ],
-      methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
       allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
       credentials: true,
       preflightContinue: false,

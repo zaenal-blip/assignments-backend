@@ -13,7 +13,6 @@
     "node_modules",
     "src/modules/review",
     "src/modules/transaction",
-    "src/modules/user",
-    "src/jobs"
+    "src/modules/user"
   ]
 }
