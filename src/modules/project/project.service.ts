@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { CreateProjectBody, GetProjectsQuery } from "../../types/project.js";
 import { sendEmailNotification } from "../../lib/mail.js";
+import { NotificationService } from "../notification/email-notification.service.js";
 
 export class ProjectService {
   constructor(private prisma: PrismaClient) {}
@@ -91,10 +92,7 @@ export class ProjectService {
       }
 
       const picUser = await tx.user.findUnique({ where: { id: body.picId } });
-      if (picUser?.email) {
-        const subject = `Assigned to Project: ${project.name}`;
-        const message = `You have been assigned as PIC for the project ${project.name}. Please check the system for details.`;
-        await sendEmailNotification(picUser.email, subject, message);
+      if (picUser) {
         await tx.notification.create({
           data: {
             userId: picUser.id,
@@ -102,6 +100,12 @@ export class ProjectService {
             type: "PROJECT_ASSIGNMENT"
           }
         });
+
+        // Decentralized Notification Trigger (Email active)
+        await NotificationService.sendProjectAssignmentNotification(
+          picUser as any,
+          project
+        );
       }
 
       return project;
@@ -124,10 +128,7 @@ export class ProjectService {
 
     if (body.picId && body.picId !== project.picId) {
       const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
-      if (picUser?.email) {
-        const subject = `Assigned to Project: ${updatedProject.name}`;
-        const message = `You have been assigned as PIC for the project ${updatedProject.name}. Please check the system for details.`;
-        await sendEmailNotification(picUser.email, subject, message);
+      if (picUser) {
         await this.prisma.notification.create({
           data: {
             userId: picUser.id,
@@ -135,6 +136,12 @@ export class ProjectService {
             type: "PROJECT_ASSIGNMENT"
           }
         });
+
+        // Decentralized Notification Trigger (Email active)
+        await NotificationService.sendProjectAssignmentNotification(
+          picUser as any,
+          updatedProject
+        );
       }
     }
 

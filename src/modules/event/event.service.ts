@@ -2,6 +2,7 @@ import { PrismaClient, Prisma } from "@prisma/client";
 import { ApiError } from "../../utils/api-error.js";
 import { CreateEventBody, GetEventsQuery } from "../../types/event.js";
 import { sendEmailNotification } from "../../lib/mail.js";
+import { NotificationService } from "../notification/email-notification.service.js";
 
 export class EventService {
   constructor(private prisma: PrismaClient) {}
@@ -110,10 +111,7 @@ export class EventService {
         where: { id: body.picId }
       });
 
-      if (picUser?.email) {
-        const subject = `Assigned to Event: ${event.name}`;
-        const message = `You have been assigned as PIC for the event ${event.name}. Please check the system for details.`;
-        await sendEmailNotification(picUser.email, subject, message);
+      if (picUser) {
         await tx.notification.create({
           data: {
             userId: picUser.id,
@@ -121,9 +119,26 @@ export class EventService {
             type: "EVENT_ASSIGNMENT"
           }
         });
+
+        console.log(`[EventService] Sending notification for event: ${event.name} to user: ${picUser.name} (${picUser.email})`);
+        
+        try {
+          // Decentralized Notification Trigger (Email active)
+          await NotificationService.sendEventAssignmentNotification(
+            picUser as any,
+            event,
+            null
+          );
+        } catch (notifError: any) {
+          console.error(`[EventService] Notification Failed:`, notifError.message);
+          // We don't want to fail the whole transaction if only notification fails
+        }
       }
 
       return event;
+    }).catch((err) => {
+      console.error("[EventService Transaction Error]", err);
+      throw err;
     });
   };
 
@@ -145,10 +160,7 @@ export class EventService {
 
     if (body.picId && body.picId !== event.picId) {
       const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
-      if (picUser?.email) {
-        const subject = `Assigned to Event: ${updatedEvent.name}`;
-        const message = `You have been assigned as PIC for the event ${updatedEvent.name}. Please check the system for details.`;
-        await sendEmailNotification(picUser.email, subject, message);
+      if (picUser) {
         await this.prisma.notification.create({
           data: {
             userId: picUser.id,
@@ -156,6 +168,13 @@ export class EventService {
             type: "EVENT_ASSIGNMENT"
           }
         });
+
+        // Decentralized Notification Trigger (Email active)
+        await NotificationService.sendEventAssignmentNotification(
+          picUser as any,
+          updatedEvent,
+          null
+        );
       }
     }
 

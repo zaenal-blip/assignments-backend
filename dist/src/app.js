@@ -41,7 +41,8 @@ export class App {
             origin: [
                 "https://assignment-tps.tmmin.online",
                 "http://localhost:5173",
-                "http://localhost:3000"
+                "http://localhost:3000",
+                process.env.BASE_URL_FE,
             ],
             methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
             allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
@@ -50,7 +51,7 @@ export class App {
             optionsSuccessStatus: 204
         };
         this.app.use(cors(corsOptions));
-        this.app.options("*", cors(corsOptions)); // Explicitly handle OPTIONS for all routes
+        this.app.options("{*path}", cors(corsOptions)); // Explicitly handle OPTIONS for all routes using Express 5 syntax
         this.app.use(express.json());
         this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
     };
