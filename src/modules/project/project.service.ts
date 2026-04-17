@@ -21,7 +21,7 @@ export class ProjectService {
       take,
       skip: (page - 1) * take,
       include: {
-        pic: { select: { id: true, name: true } },
+        pic: { select: { id: true, name: true, role: true } },
         _count: { select: { tasks: true } }
       },
       orderBy: { createdAt: "desc" }
@@ -72,6 +72,10 @@ export class ProjectService {
         data: {
           name: body.name,
           picId: body.picId,
+          startDate: new Date(body.startDate),
+          endDate: new Date(body.endDate),
+          description: body.description,
+          status: "ACTIVE"
         }
       });
 
@@ -123,6 +127,9 @@ export class ProjectService {
       data: {
         name: body.name,
         picId: body.picId,
+        startDate: body.startDate ? new Date(body.startDate) : undefined,
+        endDate: body.endDate ? new Date(body.endDate) : undefined,
+        description: body.description,
       }
     });
 

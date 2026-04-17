@@ -18,7 +18,7 @@ export class RegularJobController {
 
   createRegularJob = async (req: AuthRequest, res: Response) => {
     try {
-      const { name, category, frequency, date, startTime, endTime } = req.body;
+      const { name, category, frequency, priority, date, startTime, endTime } = req.body;
       let { picId } = req.body;
 
       // Ensure members can only create for themselves
@@ -28,7 +28,7 @@ export class RegularJobController {
         picId = req.user!.id;
       }
 
-      const result = await this.regularJobService.createRegularJob(name, picId, category, frequency, date, startTime, endTime);
+      const result = await this.regularJobService.createRegularJob(name, picId, category, frequency, priority || "LOW", date || null, startTime, endTime);
       res.status(201).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;

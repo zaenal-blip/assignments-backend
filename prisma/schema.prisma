@@ -53,19 +53,30 @@ model Event {
   @@map("events")
 }
 
+
 model Project {
-  id        Int      @id @default(autoincrement())
-  name      String
-  picId     Int
-  pic       User     @relation("ProjectPIC", fields: [picId], references: [id])
-  progress  Float    @default(0)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id          Int           @id @default(autoincrement())
+  name        String
+  picId       Int
+  pic         User          @relation("ProjectPIC", fields: [picId], references: [id])
+  startDate   DateTime      @default(now())
+  endDate     DateTime      @default(now())
+  status      ProjectStatus @default(ACTIVE)
+  description String?
+  progress    Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 
   // Relations
   tasks Task[] @relation("ProjectTasks")
 
   @@map("projects")
+}
+
+enum ProjectStatus {
+  ACTIVE
+  ON_HOLD
+  COMPLETED
 }
 
 model Task {
@@ -153,6 +164,7 @@ model RegularJob {
   pic       User             @relation("RegularJobPIC", fields: [picId], references: [id])
   category  RegularCategory  @default(SAFETY)
   frequency RegularFrequency @default(DAILY)
+  priority  TaskPriority     @default(LOW)
   progress  Float            @default(0)
   startTime String?          // Format: HH:mm
   endTime   String?          // Format: HH:mm

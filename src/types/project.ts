@@ -3,6 +3,9 @@ import { PaginationQueryParams } from "./pagination.js";
 export interface CreateProjectBody {
   name: string;
   picId: number;
+  startDate: string;
+  endDate: string;
+  description?: string;
   tasks?: CreateProjectTaskBody[];
 }
 
