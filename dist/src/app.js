@@ -1,5 +1,4 @@
 import express from "express";
-import cors from "cors";
 import path from "path";
 import { prisma } from "./lib/prisma.js";
 import { authenticate } from "./middleware/auth.middleware.js";
@@ -26,7 +25,7 @@ import { NotificationService } from "./modules/notification/notification.service
 import { NotificationController } from "./modules/notification/notification.controller.js";
 import { NotificationRouter } from "./modules/notification/notification.router.js";
 import { PersonalJobController } from "./modules/task/personal-job.controller.js";
-const PORT = 8000;
+const PORT = process.env.PORT || 8000;
 export class App {
     app;
     constructor() {
@@ -36,23 +35,34 @@ export class App {
         this.handleError();
     }
     configure = () => {
-        // 1. CORS MUST BE FIRST
-        const corsOptions = {
-            origin: [
+        // 1. Manual CORS Handling (More robust for Vercel/Serverless)
+        this.app.use((req, res, next) => {
+            const origin = req.headers.origin;
+            const allowedOrigins = [
                 "https://assignment-tps.tmmin.online",
                 "http://localhost:5173",
-                "http://localhost:3000",
-                process.env.BASE_URL_FE,
-            ],
-            methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-            allowedHeaders: ["Content-Type", "Authorization", "X-Requested-With", "Accept"],
-            credentials: true,
-            preflightContinue: false,
-            optionsSuccessStatus: 204
-        };
-        this.app.use(cors(corsOptions));
-        this.app.options("{*path}", cors(corsOptions)); // Explicitly handle OPTIONS for all routes using Express 5 syntax
-        this.app.use(express.json());
+                process.env.FRONTEND_URL,
+                process.env.BASE_URL_FE
+            ].filter(Boolean).map(o => o?.replace(/\/$/, ""));
+            if (origin && allowedOrigins.includes(origin.replace(/\/$/, ""))) {
+                res.setHeader("Access-Control-Allow-Origin", origin);
+                res.setHeader("Access-Control-Allow-Credentials", "true");
+            }
+            res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
+            res.setHeader("Access-Control-Allow-Headers", "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version, Authorization");
+            // Handle Preflight
+            if (req.method === "OPTIONS") {
+                res.status(200).end();
+                return;
+            }
+            next();
+        });
+        this.app.use(express.json({ limit: "50mb" }));
+        this.app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+        this.app.use((req, res, next) => {
+            console.log(`[${new Date().toISOString()}] ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+            next();
+        });
         this.app.use("/uploads", express.static(path.join(process.cwd(), "uploads")));
     };
     registerModules = () => {
@@ -90,6 +100,7 @@ export class App {
         personalJobRouter.put("/:id", (req, res) => personalJobController.updatePersonalJob(req, res));
         personalJobRouter.delete("/:id", (req, res) => personalJobController.deletePersonalJob(req, res));
         // Mounting
+        this.app.get("/", (req, res) => res.json({ message: "API is running" }));
         this.app.use("/auth", authRouter.getRouter());
         this.app.use("/events", eventRouter.getRouter());
         this.app.use("/projects", projectRouter.getRouter());
