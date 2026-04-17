@@ -127,6 +127,7 @@ export class App {
     personalJobRouter.delete("/:id", (req, res) => personalJobController.deletePersonalJob(req as any, res));
 
     // Mounting
+    this.app.get("/", (req, res) => res.json({ message: "API is running" }));
     this.app.use("/auth", authRouter.getRouter());
     this.app.use("/events", eventRouter.getRouter());
     this.app.use("/projects", projectRouter.getRouter());
