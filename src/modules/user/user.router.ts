@@ -4,20 +4,7 @@ import path from "path";
 import { UserController } from "./user.controller.js";
 import { authenticate } from "../../middleware/auth.middleware.js";
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    console.log("[Multer] Uploading file to destination: uploads/");
-    cb(null, "uploads/");
-  },
-  filename: (req, file, cb) => {
-    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    const fname = file.fieldname + "-" + uniqueSuffix + path.extname(file.originalname);
-    console.log("[Multer] Generated filename:", fname);
-    cb(null, fname);
-  },
-});
-
-const upload = multer({ storage });
+const upload = multer({ storage: multer.memoryStorage() });
 
 export class UserRouter {
   private router: Router;
