@@ -16,7 +16,7 @@ export class RegularJobController {
     };
     createRegularJob = async (req, res) => {
         try {
-            const { name, category, frequency, date, startTime, endTime } = req.body;
+            const { name, category, frequency, priority, date, startTime, endTime } = req.body;
             let { picId } = req.body;
             // Ensure members can only create for themselves
             if (req.user.role === "MEMBER") {
@@ -25,7 +25,7 @@ export class RegularJobController {
             else if (!picId) {
                 picId = req.user.id;
             }
-            const result = await this.regularJobService.createRegularJob(name, picId, category, frequency, date, startTime, endTime);
+            const result = await this.regularJobService.createRegularJob(name, picId, category, frequency, priority || "LOW", date || null, startTime, endTime);
             res.status(201).json(result);
         }
         catch (error) {

@@ -1,5 +1,5 @@
 import express from "express";
-import { authenticate } from "../../middleware/auth.middleware.js";
+import { authenticate, authorize } from "../../middleware/auth.middleware.js";
 export class RegularJobRouter {
     regularJobController;
     router;
@@ -10,10 +10,10 @@ export class RegularJobRouter {
     }
     initRoutes = () => {
         this.router.get("/", authenticate, this.regularJobController.getRegularJobs);
-        this.router.post("/", authenticate, this.regularJobController.createRegularJob);
-        this.router.put("/:id", authenticate, this.regularJobController.updateRegularJob);
-        this.router.post("/:id/tasks", authenticate, this.regularJobController.createRegularTask);
-        this.router.delete("/:id", authenticate, this.regularJobController.deleteRegularJob);
+        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.regularJobController.createRegularJob);
+        this.router.put("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.regularJobController.updateRegularJob);
+        this.router.post("/:id/tasks", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.regularJobController.createRegularTask);
+        this.router.delete("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.regularJobController.deleteRegularJob);
     };
     getRouter = () => {
         return this.router;

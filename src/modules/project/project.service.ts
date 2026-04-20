@@ -66,7 +66,7 @@ export class ProjectService {
     };
   };
 
-  createProject = async (body: CreateProjectBody) => {
+  createProject = async (body: CreateProjectBody, currentUserId: number) => {
     return await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
         data: {
@@ -95,28 +95,33 @@ export class ProjectService {
         }
       }
 
-      const picUser = await tx.user.findUnique({ where: { id: body.picId } });
-      if (picUser) {
-        await tx.notification.create({
-          data: {
-            userId: picUser.id,
-            message: `You have been assigned to project ${project.name}.`,
-            type: "PROJECT_ASSIGNMENT"
-          }
-        });
+      // Only send notification if PIC is someone else
+      if (body.picId !== currentUserId) {
+        const picUser = await tx.user.findUnique({ where: { id: body.picId } });
+        if (picUser) {
+          await tx.notification.create({
+            data: {
+              userId: picUser.id,
+              message: `You have been assigned to project ${project.name}.`,
+              type: "PROJECT_ASSIGNMENT",
+              targetId: project.id,
+              targetType: "PROJECT"
+            }
+          });
 
-        // Decentralized Notification Trigger (Email active)
-        await NotificationService.sendProjectAssignmentNotification(
-          picUser as any,
-          project
-        );
+          // Decentralized Notification Trigger (Email active)
+          await NotificationService.sendProjectAssignmentNotification(
+            picUser as any,
+            project
+          );
+        }
       }
 
       return project;
     });
   };
 
-  updateProject = async (id: number, body: Partial<CreateProjectBody>) => {
+  updateProject = async (id: number, body: Partial<CreateProjectBody>, currentUserId: number) => {
     const project = await this.prisma.project.findUnique({ where: { id } });
     if (!project) {
       throw new ApiError("Project not found", 404);
@@ -133,14 +138,17 @@ export class ProjectService {
       }
     });
 
-    if (body.picId && body.picId !== project.picId) {
+    // Only send notification if PIC changed AND new PIC is not the current user
+    if (body.picId && body.picId !== project.picId && body.picId !== currentUserId) {
       const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
       if (picUser) {
         await this.prisma.notification.create({
           data: {
             userId: picUser.id,
             message: `You have been assigned to project ${updatedProject.name}.`,
-            type: "PROJECT_ASSIGNMENT"
+            type: "PROJECT_ASSIGNMENT",
+            targetId: updatedProject.id,
+            targetType: "PROJECT"
           }
         });
 

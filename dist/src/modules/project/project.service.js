@@ -16,7 +16,7 @@ export class ProjectService {
             take,
             skip: (page - 1) * take,
             include: {
-                pic: { select: { id: true, name: true } },
+                pic: { select: { id: true, name: true, role: true } },
                 _count: { select: { tasks: true } }
             },
             orderBy: { createdAt: "desc" }
@@ -54,12 +54,16 @@ export class ProjectService {
             }
         };
     };
-    createProject = async (body) => {
+    createProject = async (body, currentUserId) => {
         return await this.prisma.$transaction(async (tx) => {
             const project = await tx.project.create({
                 data: {
                     name: body.name,
                     picId: body.picId,
+                    startDate: new Date(body.startDate),
+                    endDate: new Date(body.endDate),
+                    description: body.description,
+                    status: "ACTIVE"
                 }
             });
             if (body.tasks && body.tasks.length > 0) {
@@ -77,22 +81,27 @@ export class ProjectService {
                     });
                 }
             }
-            const picUser = await tx.user.findUnique({ where: { id: body.picId } });
-            if (picUser) {
-                await tx.notification.create({
-                    data: {
-                        userId: picUser.id,
-                        message: `You have been assigned to project ${project.name}.`,
-                        type: "PROJECT_ASSIGNMENT"
-                    }
-                });
-                // Decentralized Notification Trigger (Email active)
-                await NotificationService.sendProjectAssignmentNotification(picUser, project);
+            // Only send notification if PIC is someone else
+            if (body.picId !== currentUserId) {
+                const picUser = await tx.user.findUnique({ where: { id: body.picId } });
+                if (picUser) {
+                    await tx.notification.create({
+                        data: {
+                            userId: picUser.id,
+                            message: `You have been assigned to project ${project.name}.`,
+                            type: "PROJECT_ASSIGNMENT",
+                            targetId: project.id,
+                            targetType: "PROJECT"
+                        }
+                    });
+                    // Decentralized Notification Trigger (Email active)
+                    await NotificationService.sendProjectAssignmentNotification(picUser, project);
+                }
             }
             return project;
         });
     };
-    updateProject = async (id, body) => {
+    updateProject = async (id, body, currentUserId) => {
         const project = await this.prisma.project.findUnique({ where: { id } });
         if (!project) {
             throw new ApiError("Project not found", 404);
@@ -102,16 +111,22 @@ export class ProjectService {
             data: {
                 name: body.name,
                 picId: body.picId,
+                startDate: body.startDate ? new Date(body.startDate) : undefined,
+                endDate: body.endDate ? new Date(body.endDate) : undefined,
+                description: body.description,
             }
         });
-        if (body.picId && body.picId !== project.picId) {
+        // Only send notification if PIC changed AND new PIC is not the current user
+        if (body.picId && body.picId !== project.picId && body.picId !== currentUserId) {
             const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
             if (picUser) {
                 await this.prisma.notification.create({
                     data: {
                         userId: picUser.id,
                         message: `You have been assigned to project ${updatedProject.name}.`,
-                        type: "PROJECT_ASSIGNMENT"
+                        type: "PROJECT_ASSIGNMENT",
+                        targetId: updatedProject.id,
+                        targetType: "PROJECT"
                     }
                 });
                 // Decentralized Notification Trigger (Email active)

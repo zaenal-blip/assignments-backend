@@ -34,6 +34,7 @@ enum Role {
   LEADER
   SPV
   DPH
+  TMMIN
 }
 
 model Event {
@@ -134,7 +135,7 @@ enum TaskPriority {
 enum RegularCategory {
   SAFETY
   QUALITY
-  MAINTENANCE
+  PRODUCTIVITY
   FIVE_S
   ENVIRONMENT
 }
@@ -184,6 +185,8 @@ model Notification {
   message   String
   isRead    Boolean  @default(false)
   type      String?
+  targetId  Int?
+  targetType String?
   createdAt DateTime @default(now())
 
   @@map("notifications")

@@ -127,3 +127,7 @@ export class App {
         });
     }
 }
+// Create instance for Vercel/Serverless
+const appInstance = new App();
+const app = appInstance.app;
+export default app;

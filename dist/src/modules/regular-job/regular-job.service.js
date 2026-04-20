@@ -25,13 +25,14 @@ export class RegularJobService {
             throw new ApiError("Regular activity not found", 404);
         return job;
     };
-    createRegularJob = async (name, picId, category, frequency, date, startTime, endTime) => {
+    createRegularJob = async (name, picId, category, frequency, priority, date, startTime, endTime) => {
         return await this.prisma.regularJob.create({
             data: {
                 name,
                 picId,
                 category,
                 frequency,
+                priority,
                 startTime,
                 endTime,
                 tasks: {
@@ -42,7 +43,7 @@ export class RegularJobService {
                             date,
                             startTime,
                             endTime,
-                            priority: "LOW"
+                            priority: priority,
                         }]
                 }
             },
@@ -50,10 +51,19 @@ export class RegularJobService {
         });
     };
     updateRegularJob = async (id, data) => {
-        return await this.prisma.regularJob.update({
+        const updatedJob = await this.prisma.regularJob.update({
             where: { id },
             data
         });
+        // If progress is updated, sync the associated task status
+        if (data.progress !== undefined) {
+            const taskStatus = data.progress >= 100 ? "DONE" : "TODO";
+            await this.prisma.task.updateMany({
+                where: { regularJobId: id },
+                data: { status: taskStatus, progress: data.progress }
+            });
+        }
+        return updatedJob;
     };
     createRegularTask = async (regularJobId, body) => {
         return await this.prisma.task.create({
@@ -67,7 +77,7 @@ export class RegularJobService {
                 endTime: body.endTime,
                 priority: body.priority || "LOW",
                 activities: {
-                    create: body.activities.map((name) => ({ name }))
+                    create: body.activities ? body.activities.map((name) => ({ name })) : []
                 }
             }
         });
@@ -82,10 +92,15 @@ export class RegularJobService {
      * Called by the cron job at midnight every day.
      */
     resetAllDailyProgress = async () => {
-        const result = await this.prisma.regularJob.updateMany({
+        const jobs = await this.prisma.regularJob.updateMany({
             where: { progress: { gt: 0 } },
             data: { progress: 0 }
         });
-        return result.count;
+        // Also reset all regular tasks to TODO status and 0 progress
+        await this.prisma.task.updateMany({
+            where: { sourceType: "REGULAR" },
+            data: { status: "TODO", progress: 0 }
+        });
+        return jobs.count;
     };
 }

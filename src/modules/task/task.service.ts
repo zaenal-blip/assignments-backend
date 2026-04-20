@@ -89,7 +89,7 @@ export class TaskService {
       throw new ApiError("Task not found", 404);
     }
 
-    const canUpdate = task.picId === picId || ["LEADER", "SPV", "DPH"].includes(userRole);
+    const canUpdate = task.picId === picId || ["LEADER", "SPV", "DPH", "TMMIN"].includes(userRole);
     if (!canUpdate) {
       throw new ApiError("You are not allowed to update this task", 403);
     }
@@ -130,12 +130,17 @@ export class TaskService {
         where: { role: { in: ["LEADER", "SPV", "DPH"] } }
       });
       
-      if (superiors.length > 0) {
+      // Exclude the user who completed the task from the broadcast
+      const recipients = superiors.filter(sup => sup.id !== picId);
+
+      if (recipients.length > 0) {
         await this.prisma.notification.createMany({
-          data: superiors.map(sup => ({
+          data: recipients.map(sup => ({
             userId: sup.id,
             message: `Task "${task.name}" has been fully completed by ${task.pic?.name || "Member"}.`,
-            type: "TASK_COMPLETION"
+            type: "TASK_COMPLETION",
+            targetId: taskId,
+            targetType: "TASK"
           }))
         });
       }
@@ -144,7 +149,7 @@ export class TaskService {
     return { message: "Task progress updated successfully", progress: Math.round(progress) };
   };
 
-  assignTask = async (taskId: number, body: AssignTaskBody) => {
+  assignTask = async (taskId: number, body: AssignTaskBody, currentUserId: number) => {
     const task = await this.prisma.task.update({
       where: { id: taskId },
       data: { picId: body.picId },
@@ -155,30 +160,35 @@ export class TaskService {
       }
     });
 
-    // Decentralized Notification Trigger (Email active)
-    if (task.pic) {
-      await NotificationService.sendTaskAssignmentNotification(
-        task.pic as any,
-        task,
-        task.project || task.event || null,
-        "Supervisor"
-      );
-    }
-
-    const sourceName = task.project?.name ?? task.event?.name ?? "Personal/Regular Task";
-
-    await this.prisma.notification.create({
-      data: {
-        userId: task.picId,
-        message: `You have been assigned to task ${task.name} (${sourceName}).`,
-        type: "TASK_ASSIGNMENT"
+    // Only send notifications if assigning to someone else
+    if (task.picId !== currentUserId) {
+      // Decentralized Notification Trigger (Email active)
+      if (task.pic) {
+        await NotificationService.sendTaskAssignmentNotification(
+          task.pic as any,
+          task,
+          task.project || task.event || null,
+          "Supervisor"
+        );
       }
-    });
+
+      const sourceName = task.project?.name ?? task.event?.name ?? "Personal/Regular Task";
+
+      await this.prisma.notification.create({
+        data: {
+          userId: task.picId,
+          message: `You have been assigned to task ${task.name} (${sourceName}).`,
+          type: "TASK_ASSIGNMENT",
+          targetId: task.id,
+          targetType: "TASK"
+        }
+      });
+    }
 
     return { message: "Task assigned successfully", task };
   };
 
-  createTask = async (body: any) => {
+  createTask = async (body: any, currentUserId: number) => {
     const task = await this.prisma.task.create({
       data: {
         name: body.name,
@@ -198,25 +208,30 @@ export class TaskService {
       }
     });
 
-    const sourceName = task.project?.name ?? task.event?.name ?? "General Task";
+    // Only send notifications if assigning to someone else
+    if (task.picId !== currentUserId) {
+      const sourceName = task.project?.name ?? task.event?.name ?? "General Task";
 
-    // Decentralized Notification Trigger (Email active)
-    if (task.pic) {
-      await NotificationService.sendTaskAssignmentNotification(
-        task.pic as any,
-        task,
-        task.project || task.event || null,
-        "Supervisor"
-      );
-    }
-
-    await this.prisma.notification.create({
-      data: {
-        userId: task.picId,
-        message: `You have been assigned to task ${task.name} (${sourceName}).`,
-        type: "TASK_ASSIGNMENT"
+      // Decentralized Notification Trigger (Email active)
+      if (task.pic) {
+        await NotificationService.sendTaskAssignmentNotification(
+          task.pic as any,
+          task,
+          task.project || task.event || null,
+          "Supervisor"
+        );
       }
-    });
+
+      await this.prisma.notification.create({
+        data: {
+          userId: task.picId,
+          message: `You have been assigned to task ${task.name} (${sourceName}).`,
+          type: "TASK_ASSIGNMENT",
+          targetId: task.id,
+          targetType: "TASK"
+        }
+      });
+    }
 
     return task;
   };

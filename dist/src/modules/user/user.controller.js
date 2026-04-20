@@ -1,5 +1,4 @@
-import fs from "fs";
-import { cloudinaryUpload } from "../../lib/cloudinary.js";
+import { cloudinaryUploadBuffer } from "../../lib/cloudinary.js";
 export class UserController {
     userService;
     constructor(userService) {
@@ -47,25 +46,15 @@ export class UserController {
         const body = { ...req.body };
         console.log("[UpdateProfile] Request for user ID:", id);
         if (req.file) {
-            console.log("[UpdateProfile] File received:", req.file);
+            console.log("[UpdateProfile] File received (memory):", req.file.originalname);
             try {
-                console.log("[UpdateProfile] Uploading to Cloudinary...");
-                const imageUrl = await cloudinaryUpload(req.file.path);
+                console.log("[UpdateProfile] Uploading buffer to Cloudinary...");
+                const imageUrl = await cloudinaryUploadBuffer(req.file.buffer);
                 console.log("[UpdateProfile] Cloudinary upload success:", imageUrl);
                 body.avatar = imageUrl;
-                // Delete local temp file
-                if (fs.existsSync(req.file.path)) {
-                    fs.unlinkSync(req.file.path);
-                    console.log("[UpdateProfile] Local temp file deleted");
-                }
             }
             catch (error) {
                 console.error("[UpdateProfile] Cloudinary error:", error);
-                // Still clean up if upload fails
-                if (req.file && fs.existsSync(req.file.path)) {
-                    fs.unlinkSync(req.file.path);
-                    console.log("[UpdateProfile] Local temp file cleaned up after error");
-                }
                 throw error;
             }
         }

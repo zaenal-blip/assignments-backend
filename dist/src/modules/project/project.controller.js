@@ -34,7 +34,8 @@ export class ProjectController {
     };
     createProject = async (req, res) => {
         try {
-            const result = await this.projectService.createProject(req.body);
+            const currentUserId = req.user.id;
+            const result = await this.projectService.createProject(req.body, currentUserId);
             res.status(201).json(result);
         }
         catch (error) {
@@ -45,7 +46,8 @@ export class ProjectController {
     updateProject = async (req, res) => {
         try {
             const id = Number(req.params.id);
-            const result = await this.projectService.updateProject(id, req.body);
+            const currentUserId = req.user.id;
+            const result = await this.projectService.updateProject(id, req.body, currentUserId);
             res.status(200).json(result);
         }
         catch (error) {

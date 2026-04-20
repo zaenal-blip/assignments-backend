@@ -12,9 +12,9 @@ export class ProjectRouter {
         // All roles can CRUD projects
         this.router.get("/", authenticate, this.projectController.getProjects);
         this.router.get("/:id", authenticate, this.projectController.getProjectById);
-        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH"), this.projectController.createProject);
-        this.router.put("/:id", authenticate, authorize("LEADER", "SPV", "DPH"), this.projectController.updateProject);
-        this.router.delete("/:id", authenticate, authorize("LEADER", "SPV", "DPH"), this.projectController.deleteProject);
+        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.projectController.createProject);
+        this.router.put("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.projectController.updateProject);
+        this.router.delete("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.projectController.deleteProject);
     };
     getRouter = () => {
         return this.router;

@@ -39,7 +39,8 @@ export class EventController {
 
   createEvent = async (req: AuthRequest, res: Response) => {
     try {
-      const result = await this.eventService.createEvent(req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.eventService.createEvent(req.body, currentUserId);
       res.status(201).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;
@@ -50,7 +51,8 @@ export class EventController {
   updateEvent = async (req: AuthRequest, res: Response) => {
     try {
       const id = Number(req.params.id);
-      const result = await this.eventService.updateEvent(id, req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.eventService.updateEvent(id, req.body, currentUserId);
       res.status(200).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;

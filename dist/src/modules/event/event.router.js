@@ -13,9 +13,9 @@ export class EventRouter {
         this.router.get("/", authenticate, this.eventController.getEvents);
         this.router.get("/:id", authenticate, this.eventController.getEventById);
         // Management routes (Leader, SPV, DPH only)
-        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH"), this.eventController.createEvent);
-        this.router.put("/:id", authenticate, authorize("LEADER", "SPV", "DPH"), this.eventController.updateEvent);
-        this.router.delete("/:id", authenticate, authorize("LEADER", "SPV", "DPH"), this.eventController.deleteEvent);
+        this.router.post("/", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.eventController.createEvent);
+        this.router.put("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.eventController.updateEvent);
+        this.router.delete("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.eventController.deleteEvent);
     };
     getRouter = () => {
         return this.router;

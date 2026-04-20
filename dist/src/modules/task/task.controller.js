@@ -56,7 +56,8 @@ export class TaskController {
     assignTask = async (req, res) => {
         try {
             const id = Number(req.params.id);
-            const result = await this.taskService.assignTask(id, req.body);
+            const currentUserId = req.user.id;
+            const result = await this.taskService.assignTask(id, req.body, currentUserId);
             res.status(200).json(result);
         }
         catch (error) {
@@ -66,7 +67,8 @@ export class TaskController {
     };
     createTask = async (req, res) => {
         try {
-            const result = await this.taskService.createTask(req.body);
+            const currentUserId = req.user.id;
+            const result = await this.taskService.createTask(req.body, currentUserId);
             res.status(201).json(result);
         }
         catch (error) {
