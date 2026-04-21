@@ -19,19 +19,19 @@ export class EventRouter {
     this.router.post(
       "/",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.eventController.createEvent
     );
     this.router.put(
       "/:id",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.eventController.updateEvent
     );
     this.router.delete(
       "/:id",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.eventController.deleteEvent
     );
   };

@@ -61,7 +61,8 @@ export class TaskController {
   assignTask = async (req: AuthRequest, res: Response) => {
     try {
       const id = Number(req.params.id);
-      const result = await this.taskService.assignTask(id, req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.taskService.assignTask(id, req.body, currentUserId);
       res.status(200).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;
@@ -71,7 +72,8 @@ export class TaskController {
 
   createTask = async (req: AuthRequest, res: Response) => {
     try {
-      const result = await this.taskService.createTask(req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.taskService.createTask(req.body, currentUserId);
       res.status(201).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;

@@ -17,19 +17,19 @@ export class ProjectRouter {
     this.router.post(
       "/",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.projectController.createProject
     );
     this.router.put(
       "/:id",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.projectController.updateProject
     );
     this.router.delete(
       "/:id",
       authenticate,
-      authorize("LEADER", "SPV", "DPH"),
+      authorize("LEADER", "SPV", "DPH", "TMMIN"),
       this.projectController.deleteProject
     );
   };

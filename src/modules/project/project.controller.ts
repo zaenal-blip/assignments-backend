@@ -37,7 +37,8 @@ export class ProjectController {
 
   createProject = async (req: AuthRequest, res: Response) => {
     try {
-      const result = await this.projectService.createProject(req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.projectService.createProject(req.body, currentUserId);
       res.status(201).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;
@@ -48,7 +49,8 @@ export class ProjectController {
   updateProject = async (req: AuthRequest, res: Response) => {
     try {
       const id = Number(req.params.id);
-      const result = await this.projectService.updateProject(id, req.body);
+      const currentUserId = req.user!.id;
+      const result = await this.projectService.updateProject(id, req.body, currentUserId);
       res.status(200).json(result);
     } catch (error: any) {
       const status = error instanceof ApiError ? error.status : 500;

@@ -67,7 +67,7 @@ export class EventService {
             }
         };
     };
-    createEvent = async (body) => {
+    createEvent = async (body, currentUserId) => {
         return await this.prisma.$transaction(async (tx) => {
             const event = await tx.event.create({
                 data: {
@@ -92,25 +92,30 @@ export class EventService {
                     });
                 }
             }
-            const picUser = await tx.user.findUnique({
-                where: { id: body.picId }
-            });
-            if (picUser) {
-                await tx.notification.create({
-                    data: {
-                        userId: picUser.id,
-                        message: `You have been assigned to event ${event.name}.`,
-                        type: "EVENT_ASSIGNMENT"
-                    }
+            // Only send notification if PIC is someone else
+            if (body.picId !== currentUserId) {
+                const picUser = await tx.user.findUnique({
+                    where: { id: body.picId }
                 });
-                console.log(`[EventService] Sending notification for event: ${event.name} to user: ${picUser.name} (${picUser.email})`);
-                try {
-                    // Decentralized Notification Trigger (Email active)
-                    await NotificationService.sendEventAssignmentNotification(picUser, event, null);
-                }
-                catch (notifError) {
-                    console.error(`[EventService] Notification Failed:`, notifError.message);
-                    // We don't want to fail the whole transaction if only notification fails
+                if (picUser) {
+                    await tx.notification.create({
+                        data: {
+                            userId: picUser.id,
+                            message: `You have been assigned to event ${event.name}.`,
+                            type: "EVENT_ASSIGNMENT",
+                            targetId: event.id,
+                            targetType: "EVENT"
+                        }
+                    });
+                    console.log(`[EventService] Sending notification for event: ${event.name} to user: ${picUser.name} (${picUser.email})`);
+                    try {
+                        // Decentralized Notification Trigger (Email active)
+                        await NotificationService.sendEventAssignmentNotification(picUser, event, null);
+                    }
+                    catch (notifError) {
+                        console.error(`[EventService] Notification Failed:`, notifError.message);
+                        // We don't want to fail the whole transaction if only notification fails
+                    }
                 }
             }
             return event;
@@ -119,7 +124,7 @@ export class EventService {
             throw err;
         });
     };
-    updateEvent = async (id, body) => {
+    updateEvent = async (id, body, currentUserId) => {
         const event = await this.prisma.event.findUnique({ where: { id } });
         if (!event) {
             throw new ApiError("Event not found", 404);
@@ -133,14 +138,17 @@ export class EventService {
                 endDate: body.endDate ? new Date(body.endDate) : undefined,
             }
         });
-        if (body.picId && body.picId !== event.picId) {
+        // Only send notification if PIC changed AND new PIC is not the current user
+        if (body.picId && body.picId !== event.picId && body.picId !== currentUserId) {
             const picUser = await this.prisma.user.findUnique({ where: { id: body.picId } });
             if (picUser) {
                 await this.prisma.notification.create({
                     data: {
                         userId: picUser.id,
                         message: `You have been assigned to event ${updatedEvent.name}.`,
-                        type: "EVENT_ASSIGNMENT"
+                        type: "EVENT_ASSIGNMENT",
+                        targetId: updatedEvent.id,
+                        targetType: "EVENT"
                     }
                 });
                 // Decentralized Notification Trigger (Email active)

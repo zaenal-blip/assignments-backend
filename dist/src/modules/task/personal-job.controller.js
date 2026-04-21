@@ -54,7 +54,9 @@ export class PersonalJobController {
                         data: superiors.map(superior => ({
                             userId: superior.id,
                             message: `Member ${user.name} submitted a new personal job: ${name}`,
-                            type: "PERSONAL_JOB_SUBMISSION"
+                            type: "PERSONAL_JOB_SUBMISSION",
+                            targetId: result.id,
+                            targetType: "PERSONAL_JOB"
                         }))
                     });
                 }

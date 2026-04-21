@@ -47,13 +47,9 @@ export class AuthService {
     };
     login = async (body) => {
         // 1. Find user by Name (uppercase) or NoReg
-        const user = await this.prisma.user.findFirst({
+        const user = await this.prisma.user.findUnique({
             where: {
-                OR: [
-                    { name: body.identifier.toUpperCase() },
-                    { noReg: body.identifier },
-                    { email: body.identifier.toLowerCase() },
-                ],
+                noReg: body.identifier,
             },
         });
         if (!user) {
