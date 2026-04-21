@@ -136,8 +136,8 @@ enum RegularCategory {
   SAFETY
   QUALITY
   PRODUCTIVITY
-  FIVE_S
-  ENVIRONMENT
+  COST
+  HR
 }
 
 enum RegularFrequency {
