@@ -41,11 +41,8 @@ export class RegularJobController {
       const id = Number(req.params.id);
       const { name, progress } = req.body;
 
-      // Ownership check for security
+      // Any authenticated user can mark status as done
       const existing = await this.regularJobService.getRegularJobById(id);
-      if (req.user!.role === "MEMBER" && existing.picId !== req.user!.id) {
-        throw new ApiError("Forbidden: You can only update your own activities", 403);
-      }
 
       const dataToUpdate: any = {};
       if (name !== undefined) dataToUpdate.name = name;
