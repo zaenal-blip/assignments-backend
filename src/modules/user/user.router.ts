@@ -17,8 +17,8 @@ export class UserRouter {
   private initRoutes = () => {
     this.router.get("/me", authenticate, this.userController.getProfile as any);
     this.router.patch("/me", authenticate, upload.single("avatar"), this.userController.updateProfile as any);
-    this.router.get("/", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.userController.getUsers);
-    this.router.get("/:id", authenticate, authorize("LEADER", "SPV", "DPH", "TMMIN"), this.userController.getUser);
+    this.router.get("/", authenticate, this.userController.getUsers);
+    this.router.get("/:id", authenticate, this.userController.getUser);
     this.router.post("/", authenticate, authorize("TMMIN"), this.userController.createUser);
     this.router.patch("/:id", authenticate, authorize("TMMIN"), this.userController.updateUser);
     this.router.delete("/:id", authenticate, authorize("TMMIN"), this.userController.deleteUser);
