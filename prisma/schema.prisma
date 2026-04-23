@@ -65,6 +65,9 @@ model Project {
   status      ProjectStatus @default(ACTIVE)
   description String?
   progress    Float         @default(0)
+  hoshinId    Int?
+  hoshin      HoshinKPI?    @relation("ProjectHoshin", fields: [hoshinId], references: [id])
+  actionPlan  String?
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
@@ -192,3 +195,18 @@ model Notification {
   @@map("notifications")
 }
 
+model HoshinKPI {
+  id          Int      @id @default(autoincrement())
+  code        String   @unique
+  cluster     String
+  subCluster  String?
+  actionPlan  String
+  target      String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Relations
+  projects    Project[] @relation("ProjectHoshin")
+
+  @@map("hoshin_kpis")
+}

@@ -35,6 +35,10 @@ import { NotificationRouter } from "./modules/notification/notification.router.j
 
 import { PersonalJobController } from "./modules/task/personal-job.controller.js";
 
+import { HoshinService } from "./modules/hoshin/hoshin.service.js";
+import { HoshinController } from "./modules/hoshin/hoshin.controller.js";
+import { HoshinRouter } from "./modules/hoshin/hoshin.router.js";
+
 
 const PORT = process.env.PORT || 8000;
 
@@ -96,6 +100,7 @@ export class App {
     const taskService = new TaskService(prismaClient);
     const regularJobService = new RegularJobService(prismaClient);
     const notificationService = new NotificationService(prismaClient);
+    const hoshinService = new HoshinService(prismaClient);
 
     // Controllers
     const authController = new AuthController(authService);
@@ -105,6 +110,7 @@ export class App {
     const regularJobController = new RegularJobController(regularJobService);
     const notificationController = new NotificationController(notificationService);
     const personalJobController = new PersonalJobController(taskService);
+    const hoshinController = new HoshinController(hoshinService);
 
     const userService = new UserService(prismaClient);
     const userController = new UserController(userService);
@@ -117,6 +123,7 @@ export class App {
     const taskRouter = new TaskRouter(taskController);
     const regularJobRouter = new RegularJobRouter(regularJobController);
     const notificationRouter = new NotificationRouter(notificationController);
+    const hoshinRouter = new HoshinRouter(hoshinController);
 
     // Manual Personal Job Router Setup (Simplification)
     const personalJobRouter = express.Router();
@@ -136,6 +143,7 @@ export class App {
     this.app.use("/notifications", notificationRouter.getRouter());
     this.app.use("/users", userRouter.getRouter());
     this.app.use("/personal-jobs", personalJobRouter);
+    this.app.use("/hoshin", hoshinRouter.getRouter());
   };
 
   private handleError = () => {

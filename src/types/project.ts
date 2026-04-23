@@ -6,6 +6,8 @@ export interface CreateProjectBody {
   startDate: string;
   endDate: string;
   description?: string;
+  hoshinId?: number;
+  actionPlan?: string;
   tasks?: CreateProjectTaskBody[];
 }
 

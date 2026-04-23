@@ -22,6 +22,7 @@ export class ProjectService {
       skip: (page - 1) * take,
       include: {
         pic: { select: { id: true, name: true, role: true } },
+        hoshin: { select: { id: true, code: true, cluster: true, actionPlan: true } },
         _count: { select: { tasks: true } }
       },
       orderBy: { createdAt: "desc" }
@@ -40,6 +41,7 @@ export class ProjectService {
       where: { id },
       include: {
         pic: { select: { id: true, name: true } },
+        hoshin: { select: { id: true, code: true, cluster: true, actionPlan: true } },
         tasks: {
           include: {
             pic: { select: { id: true, name: true } },
@@ -69,12 +71,14 @@ export class ProjectService {
   createProject = async (body: CreateProjectBody, currentUserId: number) => {
     return await this.prisma.$transaction(async (tx) => {
       const project = await tx.project.create({
-        data: {
+         data: {
           name: body.name,
           picId: body.picId,
           startDate: new Date(body.startDate),
           endDate: new Date(body.endDate),
           description: body.description,
+          hoshinId: body.hoshinId || undefined,
+          actionPlan: body.actionPlan || undefined,
           status: "ACTIVE"
         }
       });
@@ -135,6 +139,8 @@ export class ProjectService {
         startDate: body.startDate ? new Date(body.startDate) : undefined,
         endDate: body.endDate ? new Date(body.endDate) : undefined,
         description: body.description,
+        hoshinId: body.hoshinId !== undefined ? (body.hoshinId || null) : undefined,
+        actionPlan: body.actionPlan !== undefined ? (body.actionPlan || null) : undefined,
       }
     });
 
